@@ -252,6 +252,10 @@ struct CliArgs {
     #[arg(long, num_args = 0.., help_heading = "Service Discovery (Kubernetes)")]
     decode_selector: Vec<String>,
 
+    /// Connection mode for workers (http or grpc). If not specified, auto-detected from worker URLs
+    #[arg(long, value_parser = ["http", "grpc"], help_heading = "Service Discovery (Kubernetes)")]
+    connection_mode: Option<String>,
+
     // ==================== Logging ====================
     /// Directory to store log files
     #[arg(long, help_heading = "Logging")]
@@ -971,9 +975,19 @@ impl CliArgs {
             }
             RoutingMode::OpenAI { .. } => {}
         }
-        let connection_mode = match &mode {
-            RoutingMode::OpenAI { .. } => ConnectionMode::Http,
-            _ => Self::determine_connection_mode(&all_urls),
+        // Use explicit connection_mode if provided, otherwise auto-detect
+        let connection_mode = if let Some(ref mode_str) = self.connection_mode {
+            match mode_str.to_lowercase().as_str() {
+                "grpc" => ConnectionMode::Grpc { port: None },
+                "http" => ConnectionMode::Http,
+                _ => Self::determine_connection_mode(&all_urls),
+            }
+        } else {
+            // Auto-detect: OpenAI mode always uses HTTP, others detect from URLs
+            match &mode {
+                RoutingMode::OpenAI { .. } => ConnectionMode::Http,
+                _ => Self::determine_connection_mode(&all_urls),
+            }
         };
 
         let history_backend = match self.history_backend.as_str() {

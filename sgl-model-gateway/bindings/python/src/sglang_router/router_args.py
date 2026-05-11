@@ -118,6 +118,8 @@ class RouterArgs:
     mcp_config_path: Optional[str] = None
     # Backend selection
     backend: str = "sglang"
+    # Connection mode for workers (http or grpc). If not specified, auto-detected from worker URLs
+    connection_mode: Optional[str] = None
     # History backend configuration
     history_backend: str = "memory"
     oracle_wallet_path: Optional[str] = None
@@ -718,6 +720,13 @@ class RouterArgs:
             default=RouterArgs.backend,
             choices=["sglang", "openai"],
             help="Backend runtime to use (default: sglang)",
+        )
+        backend_group.add_argument(
+            f"--{prefix}connection-mode",
+            type=str,
+            default=RouterArgs.connection_mode,
+            choices=["http", "grpc"],
+            help="Connection mode for communicating with workers: http or grpc (default: auto-detect from URLs)",
         )
         backend_group.add_argument(
             f"--{prefix}history-backend",

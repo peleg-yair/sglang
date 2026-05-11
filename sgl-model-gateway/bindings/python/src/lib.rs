@@ -724,6 +724,7 @@ impl Router {
         enable_trace = false,
         otlp_traces_endpoint = String::from("localhost:4317"),
         control_plane_auth = None,
+        connection_mode = None,
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -811,6 +812,7 @@ impl Router {
         enable_trace: bool,
         otlp_traces_endpoint: String,
         control_plane_auth: Option<PyControlPlaneAuthConfig>,
+        connection_mode: Option<String>,
     ) -> PyResult<Self> {
         let mut all_urls = worker_urls.clone();
 
@@ -824,7 +826,21 @@ impl Router {
             all_urls.extend(decode_urls.clone());
         }
 
-        let connection_mode = Self::determine_connection_mode(&all_urls);
+        // Convert connection_mode string to ConnectionMode enum, or auto-detect if not specified
+        let connection_mode = match connection_mode {
+            Some(mode) => match mode.to_lowercase().as_str() {
+                "grpc" => core::ConnectionMode::Grpc { port: None },
+                "http" => core::ConnectionMode::Http,
+                _ => {
+                    // Fallback to auto-detection from URLs if invalid value provided
+                    Self::determine_connection_mode(&all_urls)
+                }
+            },
+            None => {
+                // No explicit connection_mode specified, auto-detect from worker URLs
+                Self::determine_connection_mode(&all_urls)
+            }
+        };
 
         Ok(Router {
             host,
